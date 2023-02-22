@@ -1,7 +1,7 @@
 ---
 title: linux基础_01_简介
-date: 2022-03-12
-description: 
+date: 2023-02-21
+description: 关于linux的一些操作简介
 slug: linux01
 image: linux.jpg
 categories: 
