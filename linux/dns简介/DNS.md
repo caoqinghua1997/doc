@@ -152,9 +152,147 @@ PING www.a.shifen.com (183.232.231.172) 56(84) bytes of data.
 
 ### 主DNS服务器
 
+修改配置文件`/etc//etc/named.rfc1912.zone`,  添加域以及对应的文件
+
+```shell
+zone "test.com" IN {
+		# 类型为master | slave| forward
+        type master;
+        # 对应的解析文件
+        file "test.com.zone";
+};
+```
+
+创建解析文件并添加自定义域名解析
+
+```shell
+cp   -rp   named.empty   test.com.zone
+
+[root@rocky9 named]# cat test.com.zone 
+$TTL 3H
+@       IN SOA  @ admin.test.com. (
+                                        0       ; serial
+                                        1D      ; refresh
+                                        1H      ; retry
+                                        1W      ; expire
+                                        3H )    ; minimum
+        NS      @
+        A       127.0.0.1
+        AAAA    ::1
+
+test    A       1.1.1.1
+t1      A       2.2.2.2
+t2      A       3.3.3.3
+
+```
+
+其他终端尝试解析
+
+```shell
+[root@rocky9 ~]# nslookup  t2.test.com
+Server:         192.168.56.109
+Address:        192.168.56.109#53
+
+Name:   t2.test.com
+Address: 3.3.3.3
+```
+
+### 主从DNS
+
+主DNS同上
+
+从DNS配置`/etc/named.conf`
+
+```shell
+listen-on port 53 { 192.168.56.109;127.0.0.1; };
+allow-query     { any; };
+```
+
+从DNS区域配置 `/etc/named.rfc1912.zones ` 
+
+```shell
+zone "test.com" IN {
+        type slave;
+        masters { 192.168.56.109; };
+        file "slaves/slave_test.com.zone";
+};
+```
+
+重启后`slaves`目录会出现主DNS的区域文件。
+
+### 主从数据同步
+
+主DNS上添加并解析从DNS
+
+```shell
+$TTL 3H
+@       IN SOA  @ admin.test.com. (
+                                        0       ; serial
+                                        1D      ; refresh
+                                        1H      ; retry
+                                        1W      ; expire
+                                        3H )    ; minimum
+        NS      @
+        NS		NS1
+        A       127.0.0.1
+        AAAA    ::1
+NS1		A		192.168.56.110
+
+# 添加多个Name Server  并添加解析
+```
+
+修改只允许从DNS同步，增加安全性
+
+```shell
+zone "test.com" IN {
+		# 类型为master | slave| forward
+        type master;
+        # 对应的解析文件
+        file "test.com.zone";
+        # 只允许从DNS同步
+        allow-transfer {192.168.56.110; };
+        
+};
+```
+
+修改从DNS服务器不允许其他服务器同步
+
+```shell
+zone "test.com" IN {
+        type slave;
+        masters { 192.168.56.109; };
+        file "slaves/slave_test.com.zone";
+        allow-transfer {none};
+};
+```
+
+### 反向解析
 
 
 
+### 转发服务器
+
+
+
+### ACL
+
+| acl       | 简述                               |
+| --------- | ---------------------------------- |
+| none      | 没有一个主机                       |
+| any       | 任意主机                           |
+| localhost | 本机                               |
+| localnet  | 本机的ip同掩码运算后得到的网络地址 |
+
+
+
+### 访问控制
+
+| 访问控制        | 简述               |
+| --------------- | ------------------ |
+| allow-query     | 允许查询           |
+| allow-transfer  | 允许转换           |
+| allow-recursion | 允许递归查询       |
+| allow-update    | 允许更新数据库文件 |
 
 
 
